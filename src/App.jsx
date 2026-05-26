@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import './App.css'
 
@@ -8,8 +8,20 @@ const navItems = [
   { label: '书架', path: '/bookshelf' },
 ]
 
+const themeLabels = { light: '明亮模式', dark: '暗黑模式', warm: '暖色模式' }
+
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  function cycleTheme() {
+    setTheme(prev => prev === 'light' ? 'dark' : prev === 'dark' ? 'warm' : 'light')
+  }
 
   function closeMenu() {
     setMenuOpen(false)
@@ -46,8 +58,10 @@ function App() {
             <button className="icon-button" type="button" aria-label="搜索暂未启用">
               <span aria-hidden="true">⌕</span>
             </button>
-            <button className="icon-button" type="button" aria-label="主题跟随系统设置">
-              <span aria-hidden="true">◐</span>
+            <button className="icon-button theme-toggle" type="button" onClick={cycleTheme} aria-label={themeLabels[theme]}>
+              <span className="theme-indicator" aria-hidden="true">
+                <span className={`theme-dot ${theme}`}></span>
+              </span>
             </button>
             <button
               className="menu-button"
