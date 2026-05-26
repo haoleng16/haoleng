@@ -1,3 +1,4 @@
+<!-- category: React 学习笔记 -->
 # React 基础入门
 
 React 是一个用于构建用户界面的 JavaScript 库，由 Facebook 开发并维护。
