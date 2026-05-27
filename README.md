@@ -1,1 +1,6 @@
-## 查看网页：https://haoleng16.github.io/haoleng/
+## 查看网页：
+网页地址：https://haoleng16.github.io/haoleng/
+
+## 创意点
+- 首页右上角有✨图标，点击能够弹出不影响首页布局的小弹窗。内容包含程序员的每日金句，连续点击10次能够触发小彩蛋
+
