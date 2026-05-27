@@ -1,4 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import { useState, useRef, useEffect, useCallback } from 'react'
+
+const API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY
+const MODEL = import.meta.env.VITE_DEEPSEEK_MODEL || 'deepseek-v4-flash'
+const API_URL = 'https://api.deepseek.com/chat/completions'
+
+const SYSTEM_PROMPT = '你是一位专业的简历分析助手。你的任务是：\n1. 分析用户提交的简历内容\n2. 指出简历中的优点和不足\n3. 提出具体的改进建议\n4. 帮助优化简历的措辞和结构\n5. 根据目标岗位给出针对性的修改建议\n请用中文回复，语气专业但友好。'
 
 const WELCOME = '你好！我是简历分析助手，请上传你的简历（PDF / 图片 / TXT），或直接粘贴内容，我来帮你分析优化。'
 
@@ -24,29 +31,122 @@ function Agent() {
     setConversations(prev => prev.map(c => (c.id === id ? updater(c) : c)))
   }
 
-  function handleSend() {
+  const [loading, setLoading] = useState(false)
+
+  const readFilesAsText = useCallback(async (fileList) => {
+    const readable = fileList.filter(f => {
+      const ext = f.name.split('.').pop().toLowerCase()
+      return ['txt', 'pdf'].includes(ext)
+    })
+    const results = await Promise.all(
+      readable.map(f => f.text().then(t => `[${f.name}]\n${t}`))
+    )
+    return results.join('\n\n')
+  }, [])
+
+  const callDeepSeek = useCallback(async (messages) => {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+        stream: true,
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`API 请求失败 (${res.status}): ${err}`)
+    }
+
+    return res.body
+  }, [])
+
+  async function handleSend() {
     const text = input.trim()
     if (!text && files.length === 0) return
+    if (loading) return
 
+    const fileText = await readFilesAsText(files)
     const fileNames = files.map(f => `📎 ${f.name}`).join('  ')
-    const userContent = fileNames ? (text ? `${text}\n${fileNames}` : fileNames) : text
+    let userContent = ''
+    if (text) userContent += text
+    if (fileNames) userContent += (userContent ? '\n' : '') + fileNames
+    if (fileText) userContent += (userContent ? '\n\n' : '') + fileText
 
-    updateConversation(activeId, c => ({
-      ...c,
-      messages: [...c.messages, { role: 'user', content: userContent }],
-      title: c.messages.length <= 1 && text ? text.slice(0, 20) + (text.length > 20 ? '...' : '') : c.title,
-    }))
-
-    // TODO: call DeepSeek API
-    setTimeout(() => {
-      updateConversation(activeId, c => ({
-        ...c,
-        messages: [...c.messages, { role: 'assistant', content: '（DeepSeek API 尚未接入，这是占位回复）\n\n我已经收到你的内容，稍后接入 API 后将返回真实的简历分析结果。' }],
-      }))
-    }, 600)
+    const convId = activeId
 
     setInput('')
     setFiles([])
+    setLoading(true)
+
+    // Add user message + empty assistant placeholder in one update
+    updateConversation(convId, c => ({
+      ...c,
+      messages: [...c.messages, { role: 'user', content: userContent }, { role: 'assistant', content: '' }],
+      title: c.messages.length <= 1 && text ? text.slice(0, 20) + (text.length > 20 ? '...' : '') : c.title,
+    }))
+
+    try {
+      const historyMessages = activeConv.messages
+        .filter(m => m.role !== 'assistant' || m.content)
+        .map(m => ({ role: m.role, content: m.content }))
+      historyMessages.push({ role: 'user', content: userContent })
+
+      const stream = await callDeepSeek(historyMessages)
+      const reader = stream.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed || !trimmed.startsWith('data: ')) continue
+          const data = trimmed.slice(6)
+          if (data === '[DONE]') continue
+
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (delta) {
+              accumulated += delta
+              const current = accumulated
+              updateConversation(convId, c => {
+                const msgs = [...c.messages]
+                msgs[msgs.length - 1] = { role: 'assistant', content: current }
+                return { ...c, messages: msgs }
+              })
+            }
+          } catch { /* skip malformed chunks */ }
+        }
+      }
+
+      if (!accumulated) {
+        updateConversation(convId, c => {
+          const msgs = [...c.messages]
+          msgs[msgs.length - 1] = { role: 'assistant', content: '抱歉，未收到有效回复，请重试。' }
+          return { ...c, messages: msgs }
+        })
+      }
+    } catch (err) {
+      updateConversation(convId, c => {
+        const msgs = [...c.messages]
+        msgs[msgs.length - 1] = { role: 'assistant', content: `请求出错：${err.message}` }
+        return { ...c, messages: msgs }
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   function handleKeyDown(e) {
@@ -96,7 +196,7 @@ function Agent() {
       {/* Right sidebar — history */}
       <aside className="agent-history">
         <div className="agent-history-header">
-          <span>对话记录</span>
+          <span>Recents</span>
           <button className="agent-new-btn" type="button" onClick={newConversation} aria-label="新建对话">+</button>
         </div>
         <div className="agent-history-list">
@@ -119,9 +219,20 @@ function Agent() {
         <div className="agent-messages">
           {activeConv.messages.map((msg, i) => (
             <div key={i} className={`agent-bubble agent-bubble--${msg.role}`}>
-              {msg.role === 'assistant' && <span className="agent-avatar">AI</span>}
               <div className="agent-bubble-content">
-                {msg.content}
+                {msg.role === 'assistant' ? (
+                  msg.content ? (
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  ) : (
+                    <span className="agent-thinking">
+                      <span className="agent-thinking-dot"></span>
+                      <span className="agent-thinking-dot"></span>
+                      <span className="agent-thinking-dot"></span>
+                    </span>
+                  )
+                ) : (
+                  msg.content
+                )}
               </div>
             </div>
           ))}
@@ -163,11 +274,15 @@ function Agent() {
             placeholder="输入消息或粘贴简历内容…"
             rows={1}
           />
-          <button className="agent-send-btn" type="button" onClick={handleSend} aria-label="发送">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
+          <button className="agent-send-btn" type="button" onClick={handleSend} disabled={loading} aria-label="发送">
+            {loading ? (
+              <span className="agent-loading-dot">●</span>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            )}
           </button>
         </div>
       </div>
