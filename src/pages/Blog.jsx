@@ -26,7 +26,6 @@ function Blog() {
   const [error, setError] = useState(null)
   const [selectedPost, setSelectedPost] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState(null)
-  const [showList, setShowList] = useState(false)
   const contentRef = useRef(null)
   const articleRef = useRef(null)
   const [activeHeading, setActiveHeading] = useState('')
@@ -86,7 +85,6 @@ function Blog() {
   function selectPost(post, category) {
     setSelectedPost(post)
     setSelectedCategory(category)
-    setShowList(false)
     setActiveHeading('')
     if (contentRef.current) {
       contentRef.current.scrollTo({ top: 0, behavior: 'smooth' })
@@ -140,27 +138,20 @@ function Blog() {
 
   return (
     <div className="blog-layout">
-      {/* Back link / List toggle */}
-      <button className="blog-back-btn" onClick={() => setShowList(!showList)}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        {showList ? '返回文章' : '博文列表'}
-      </button>
-
-      {/* Article list overlay */}
-      {showList && (
-        <div className="blog-list-panel">
+      <div className="blog-content-wrapper">
+        {/* Left sidebar — post list */}
+        <aside className="blog-sidebar">
+          <div className="blog-sidebar-header">博文列表</div>
           {blogCategories.map(category => (
-            <div key={category.name} className="blog-list-category">
-              <div className="blog-list-category-header">
+            <div key={category.name} className="blog-sidebar-group">
+              <div className="blog-sidebar-group-title">
                 <span>{category.icon}</span>
                 <span>{category.name}</span>
               </div>
               {category.posts.map(post => (
                 <button
                   key={post.id}
-                  className={`blog-list-item ${selectedPost?.id === post.id ? 'active' : ''}`}
+                  className={`blog-sidebar-item ${selectedPost?.id === post.id ? 'active' : ''}`}
                   onClick={() => selectPost(post, category)}
                 >
                   {post.title}
@@ -168,10 +159,8 @@ function Blog() {
               ))}
             </div>
           ))}
-        </div>
-      )}
+        </aside>
 
-      <div className="blog-content-wrapper">
         {/* Main content */}
         <main className="blog-main" ref={contentRef}>
           {selectedPost ? (
