@@ -10,9 +10,29 @@ const navItems = [
 
 const themeLabels = { light: '明亮模式', dark: '暗黑模式', warm: '暖色模式' }
 
+const inspirations = [
+  '今天也要把 Bug 变成 Feature 哦～',
+  '代码写不完没关系，咖啡先喝完',
+  '你离完美只差一个 commit 的距离',
+  '报错不是终点，是重构的起点',
+  '摸鱼一时爽，一直摸鱼一直爽',
+  'Ctrl+C 和 Ctrl+V 是人类文明之光',
+  '别慌，Stack Overflow 知道一切',
+  '今天的不开心就到此为止吧，push 一下就好',
+  '你的代码比你想象的更棒',
+  '每个大佬都曾是复制粘贴的小白',
+  '写代码就像做饭，火候到了自然香',
+]
+
+const EASTER_EGG_TRIGGER = 10
+
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
+  const [inspirationOpen, setInspirationOpen] = useState(false)
+  const [inspirationIndex, setInspirationIndex] = useState(0)
+  const [clickCount, setClickCount] = useState(0)
+  const [easterEgg, setEasterEgg] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -25,6 +45,26 @@ function App() {
 
   function closeMenu() {
     setMenuOpen(false)
+  }
+
+  function handleInspiration() {
+    const next = clickCount + 1
+    setClickCount(next)
+
+    if (next >= EASTER_EGG_TRIGGER) {
+      setEasterEgg(true)
+      setInspirationOpen(true)
+      setClickCount(0)
+      return
+    }
+
+    setInspirationIndex(Math.floor(Math.random() * inspirations.length))
+    setInspirationOpen(true)
+  }
+
+  function closeInspiration() {
+    setInspirationOpen(false)
+    setEasterEgg(false)
   }
 
   function scrollToTop() {
@@ -55,9 +95,24 @@ function App() {
           </div>
 
           <div className="nav-actions">
-            <button className="icon-button" type="button" aria-label="搜索暂未启用">
-              <span aria-hidden="true">⌕</span>
-            </button>
+            <div className="inspiration-wrapper">
+              <button className="icon-button inspiration-btn" type="button" onClick={handleInspiration} aria-label="今日灵感">
+                <span className="inspiration-icon" aria-hidden="true">✦</span>
+              </button>
+              {inspirationOpen && (
+                <div className="inspiration-card">
+                  <button className="inspiration-close" type="button" onClick={closeInspiration} aria-label="关闭">✕</button>
+                  {easterEgg ? (
+                    <div className="inspiration-easter">
+                      <span className="easter-badge">🏆</span>
+                      <p>连续点击10次解锁<br /><strong>隐藏成就：摸鱼之神</strong></p>
+                    </div>
+                  ) : (
+                    <p className="inspiration-text">{inspirations[inspirationIndex]}</p>
+                  )}
+                </div>
+              )}
+            </div>
             <button className="icon-button theme-toggle" type="button" onClick={cycleTheme} aria-label={themeLabels[theme]}>
               <span className="theme-indicator" aria-hidden="true">
                 <span className={`theme-dot ${theme}`}></span>

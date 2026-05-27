@@ -143,6 +143,125 @@
   box-shadow: 0 0 6px rgba(196, 122, 42, 0.5);
 }
 
+/* Inspiration button & card */
+
+.inspiration-wrapper {
+  position: relative;
+}
+
+.inspiration-btn {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.inspiration-icon {
+  font-size: 16px;
+  line-height: 1;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.45));
+}
+
+.inspiration-card {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: -8px;
+  min-width: 240px;
+  padding: 20px 22px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1), 0 0 0 0.5px rgba(255, 255, 255, 0.2);
+  z-index: 110;
+  animation: inspiration-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+:root[data-theme="dark"] .inspiration-card {
+  background: rgba(36, 36, 40, 0.82);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="warm"] .inspiration-card {
+  background: rgba(255, 245, 232, 0.82);
+  border-color: rgba(196, 122, 42, 0.15);
+}
+
+@keyframes inspiration-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.inspiration-text {
+  color: var(--text-h);
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.inspiration-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+.inspiration-close:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.inspiration-easter {
+  text-align: center;
+}
+
+.easter-badge {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 10px;
+  animation: easter-bounce 0.6s ease infinite alternate;
+}
+
+@keyframes easter-bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
+}
+
+.inspiration-easter p {
+  color: var(--text-h);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.inspiration-easter strong {
+  background: linear-gradient(135deg, #6366f1, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .menu-button {
   display: none;
   flex-direction: column;
