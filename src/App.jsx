@@ -6,6 +6,7 @@ const navItems = [
   { label: '首页', path: '/' },
   { label: '博客', path: '/blog' },
   { label: '书架', path: '/bookshelf' },
+  { label: 'Agent', path: '/agent' },
 ]
 
 const themeLabels = { light: '明亮模式', dark: '暗黑模式', warm: '暖色模式' }

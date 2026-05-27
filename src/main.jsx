@@ -6,6 +6,7 @@ import Home from './pages/Home.jsx'
 import Blog from './pages/Blog.jsx'
 import Bookshelf from './pages/Bookshelf.jsx'
 import Admin from './pages/Admin.jsx'
+import Agent from './pages/Agent.jsx'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
 createRoot(document.getElementById('root')).render(
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="blog" element={<Blog />} />
           <Route path="bookshelf" element={<Bookshelf />} />
           <Route path="admin" element={<Admin />} />
+          <Route path="agent" element={<Agent />} />
         </Route>
       </Routes>
     </BrowserRouter>
