@@ -1,13 +1,9 @@
 import ReactMarkdown from 'react-markdown'
 import { useState, useRef, useEffect, useCallback } from 'react'
 
-const API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY
-const MODEL = import.meta.env.VITE_DEEPSEEK_MODEL || 'deepseek-v4-flash'
-const API_URL = 'https://api.deepseek.com/chat/completions'
+const BACKEND_URL = 'http://127.0.0.1:8080/api/agent/chat'
 
-const SYSTEM_PROMPT = '你是一位专业的简历分析助手。你的任务是：\n1. 分析用户提交的简历内容\n2. 指出简历中的优点和不足\n3. 提出具体的改进建议\n4. 帮助优化简历的措辞和结构\n5. 根据目标岗位给出针对性的修改建议\n请用中文回复，语气专业但友好。'
-
-const WELCOME = '你好！我是简历分析助手，请上传你的简历（PDF / 图片 / TXT），或直接粘贴内容，我来帮你分析优化。'
+const WELCOME = '你好!我是简历分析助手,请上传你的简历(PDF / 图片 / TXT)，或直接粘贴内容，我来帮你分析优化。'
 
 function createConversation(title) {
   return { id: Date.now(), title, messages: [{ role: 'assistant', content: WELCOME }], time: new Date().toLocaleString('zh-CN') }
@@ -44,23 +40,17 @@ function Agent() {
     return results.join('\n\n')
   }, [])
 
-  const callDeepSeek = useCallback(async (messages) => {
-    const res = await fetch(API_URL, {
+  //前端接受后端数据流
+  const callBackend = useCallback(async (messages) => {
+    const res = await fetch(BACKEND_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
-        stream: true,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
     })
 
     if (!res.ok) {
       const err = await res.text()
-      throw new Error(`API 请求失败 (${res.status}): ${err}`)
+      throw new Error(`后端请求失败 (${res.status}): ${err}`)
     }
 
     return res.body
@@ -97,7 +87,7 @@ function Agent() {
         .map(m => ({ role: m.role, content: m.content }))
       historyMessages.push({ role: 'user', content: userContent })
 
-      const stream = await callDeepSeek(historyMessages)
+      const stream = await callBackend(historyMessages)
       const reader = stream.getReader()
       const decoder = new TextDecoder()
       let accumulated = ''

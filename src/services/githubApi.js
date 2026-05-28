@@ -51,40 +51,83 @@ export async function fetchPostList() {
     `${API_BASE}/repos/${OWNER}/${REPO}/contents/${POSTS_PATH}?ref=${BRANCH}`,
   )
   const entries = await response.json()
-  const mdFiles = entries.filter(e => e.type === 'file' && e.name.endsWith('.md'))
-
-  const categoryMap = new Map()
-
-  for (const file of mdFiles) {
-    const contentResponse = await fetch(file.download_url)
-    const content = await contentResponse.text()
-    const { category, title } = parsePostMetadata(content, file.name)
-
-    if (!categoryMap.has(category)) {
-      categoryMap.set(category, [])
-    }
-    categoryMap.get(category).push({
-      id: file.name.replace(/\.md$/, ''),
-      title,
-      content,
-      filename: file.name,
-      sha: file.sha,
-    })
-  }
-
-  const icons = {
-    'AI 模型优化': '🤖',
-    'React 学习笔记': '⚛️',
-    '前端技巧': '🎨',
-  }
 
   const categories = []
-  for (const [name, posts] of categoryMap) {
-    categories.push({
-      name,
-      icon: icons[name] || '📝',
-      posts,
-    })
+
+  for (const entry of entries) {
+    if (entry.type === 'file' && entry.name.endsWith('.md')) {
+      const contentResponse = await fetch(entry.download_url)
+      const content = await contentResponse.text()
+      const { title } = parsePostMetadata(content, entry.name)
+      categories.push({
+        name: title,
+        icon: '📝',
+        posts: [{
+          id: entry.name.replace(/\.md$/, ''),
+          title,
+          content,
+          filename: entry.name,
+          sha: entry.sha,
+        }],
+      })
+      continue
+    }
+
+    if (entry.type !== 'dir') continue
+
+    const dirResponse = await apiRequest(
+      `${API_BASE}/repos/${OWNER}/${REPO}/contents/${entry.path}?ref=${BRANCH}`,
+    )
+    const dirEntries = await dirResponse.json()
+
+    const directMdFiles = dirEntries.filter(e => e.type === 'file' && e.name.endsWith('.md'))
+    const subDirs = dirEntries.filter(e => e.type === 'dir')
+
+    const icon = { 'CSS语法': '🎨', 'React基础': '⚛️', 'AI 模型优化': '🤖' }[entry.name] || '📝'
+
+    if (subDirs.length > 0) {
+      const subcategories = []
+      for (const sub of subDirs) {
+        const subResponse = await apiRequest(
+          `${API_BASE}/repos/${OWNER}/${REPO}/contents/${sub.path}?ref=${BRANCH}`,
+        )
+        const subEntries = await subResponse.json()
+        const subMdFiles = subEntries.filter(e => e.type === 'file' && e.name.endsWith('.md'))
+
+        const posts = []
+        for (const file of subMdFiles) {
+          const contentResponse = await fetch(file.download_url)
+          const content = await contentResponse.text()
+          const { title } = parsePostMetadata(content, file.name)
+          posts.push({
+            id: `${entry.name}/${sub.name}/${file.name}`.replace(/\.md$/, ''),
+            title,
+            content,
+            filename: file.name,
+            sha: file.sha,
+            path: `${entry.name}/${sub.name}`,
+          })
+        }
+        subcategories.push({ name: sub.name.replace(/^\d+-/, ''), posts })
+      }
+      categories.push({ name: entry.name, icon, subcategories, posts: [] })
+    } else {
+      const posts = []
+      for (const file of directMdFiles) {
+        const contentResponse = await fetch(file.download_url)
+        const content = await contentResponse.text()
+        const { title } = parsePostMetadata(content, file.name)
+        posts.push({
+          id: `${entry.name}/${file.name}`.replace(/\.md$/, ''),
+          title,
+          content,
+          filename: file.name,
+          sha: file.sha,
+          path: entry.name,
+        })
+      }
+      categories.push({ name: entry.name, icon, posts })
+    }
   }
 
   return categories

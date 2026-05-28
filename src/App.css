@@ -887,6 +887,46 @@
   margin-bottom: 4px;
 }
 
+.blog-sidebar-expandable {
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+  font-family: var(--sans);
+}
+
+.blog-sidebar-expandable:hover {
+  background: var(--accent-bg);
+}
+
+.blog-sidebar-arrow {
+  margin-left: auto;
+  font-size: 11px;
+  transition: transform 0.2s;
+  opacity: 0.5;
+}
+
+.blog-sidebar-arrow.open {
+  transform: rotate(90deg);
+}
+
+.blog-sidebar-subgroup {
+  padding-left: 18px;
+}
+
+.blog-sidebar-subgroup-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.6;
+  padding: 6px 8px 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .blog-sidebar-item {
   display: block;
   width: 100%;
