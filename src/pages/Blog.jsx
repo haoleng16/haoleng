@@ -1,6 +1,17 @@
 import ReactMarkdown from 'react-markdown'
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { fetchPostList } from '../services/githubApi'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { getLocalPostCategories } from '../services/localPosts'
+
+const BLOG_CATEGORIES = getLocalPostCategories()
+
+const ALL_POSTS = BLOG_CATEGORIES.flatMap(cat => {
+  if (cat.subcategories?.length > 0) {
+    return cat.subcategories.flatMap(sub =>
+      sub.posts.map(p => ({ post: p, category: cat, subcategory: sub })),
+    )
+  }
+  return cat.posts.map(p => ({ post: p, category: cat }))
+})
 
 function extractHeadings(content) {
   const lines = content.split('\n')
@@ -21,52 +32,14 @@ function extractHeadings(content) {
 }
 
 function Blog() {
-  const [blogCategories, setBlogCategories] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [selectedPost, setSelectedPost] = useState(null)
-  const [selectedCategory, setSelectedCategory] = useState(null)
+  const blogCategories = BLOG_CATEGORIES
+  const allPosts = ALL_POSTS
+  const [selectedPost, setSelectedPost] = useState(() => allPosts[0]?.post ?? null)
+  const [selectedCategory, setSelectedCategory] = useState(() => allPosts[0]?.category ?? null)
   const contentRef = useRef(null)
   const articleRef = useRef(null)
   const [activeHeading, setActiveHeading] = useState('')
-  const [expandedCat, setExpandedCat] = useState(null)
-
-  const allPosts = useMemo(
-    () => blogCategories.flatMap(cat => {
-      if (cat.subcategories?.length > 0) {
-        return cat.subcategories.flatMap(sub =>
-          sub.posts.map(p => ({ post: p, category: cat, subcategory: sub }))
-        )
-      }
-      return cat.posts.map(p => ({ post: p, category: cat }))
-    }),
-    [blogCategories],
-  )
-
-  const loadPosts = useCallback(() => {
-    setLoading(true)
-    setError(null)
-    fetchPostList()
-      .then(categories => {
-        setBlogCategories(categories)
-        setLoading(false)
-      })
-      .catch(err => {
-        setError(err.message)
-        setLoading(false)
-      })
-  }, [])
-
-  useEffect(() => {
-    loadPosts()
-  }, [loadPosts])
-
-  useEffect(() => {
-    if (allPosts.length > 0 && !selectedPost) {
-      setSelectedPost(allPosts[0].post)
-      setSelectedCategory(allPosts[0].category)
-    }
-  }, [allPosts, selectedPost])
+  const [expandedCat, setExpandedCat] = useState(() => allPosts[0]?.category.name ?? null)
 
   const headings = useMemo(
     () => (selectedPost ? extractHeadings(selectedPost.content) : []),
@@ -122,29 +95,6 @@ function Blog() {
     return idx < allPosts.length - 1 ? allPosts[idx + 1] : null
   }
 
-  if (loading) {
-    return (
-      <div className="blog-layout">
-        <div className="blog-loading">
-          <div className="blog-loading-spinner"></div>
-          <p>加载中...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="blog-layout">
-        <div className="blog-error">
-          <span className="empty-icon">⚠️</span>
-          <p>博客加载失败: {error}</p>
-          <button className="blog-retry-btn" onClick={loadPosts}>重试</button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="blog-layout">
       <div className="blog-content-wrapper">
@@ -153,17 +103,16 @@ function Blog() {
           <div className="blog-sidebar-header">博文列表</div>
           {blogCategories.map(category => (
             <div key={category.name} className="blog-sidebar-group">
-              {category.subcategories?.length > 0 ? (
-                <>
-                  <button
-                    className="blog-sidebar-group-title blog-sidebar-expandable"
-                    onClick={() => setExpandedCat(expandedCat === category.name ? null : category.name)}
-                  >
-                    <span>{category.icon}</span>
-                    <span>{category.name}</span>
-                    <span className={`blog-sidebar-arrow ${expandedCat === category.name ? 'open' : ''}`}>▸</span>
-                  </button>
-                  {expandedCat === category.name && category.subcategories.map(sub => (
+              <button
+                className="blog-sidebar-group-title blog-sidebar-expandable"
+                onClick={() => setExpandedCat(expandedCat === category.name ? null : category.name)}
+              >
+                <span>{category.name}</span>
+                <span className={`blog-sidebar-arrow ${expandedCat === category.name ? 'open' : ''}`}>▸</span>
+              </button>
+              {expandedCat === category.name && (
+                category.subcategories?.length > 0 ? (
+                  category.subcategories.map(sub => (
                     <div key={sub.name} className="blog-sidebar-subgroup">
                       <div className="blog-sidebar-subgroup-title">{sub.name}</div>
                       {sub.posts.map(post => (
@@ -176,15 +125,9 @@ function Blog() {
                         </button>
                       ))}
                     </div>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <div className="blog-sidebar-group-title">
-                    <span>{category.icon}</span>
-                    <span>{category.name}</span>
-                  </div>
-                  {category.posts.map(post => (
+                  ))
+                ) : (
+                  category.posts.map(post => (
                     <button
                       key={post.id}
                       className={`blog-sidebar-item ${selectedPost?.id === post.id ? 'active' : ''}`}
@@ -192,8 +135,8 @@ function Blog() {
                     >
                       {post.title}
                     </button>
-                  ))}
-                </>
+                  ))
+                )
               )}
             </div>
           ))}
@@ -206,7 +149,7 @@ function Blog() {
               {/* Article header */}
               <header className="blog-article-header">
                 <div className="blog-article-meta">
-                  <span className="blog-meta-category">{selectedCategory?.icon} {selectedCategory?.name}</span>
+                  <span className="blog-meta-category">{selectedCategory?.name}</span>
                 </div>
                 <h1 className="blog-article-title">{selectedPost.title}</h1>
               </header>

@@ -13,6 +13,7 @@ agent = ResumeAgent(config=AgentConfig())
 # ── FastAPI 应用 ────────────────────────────────────────
 app = FastAPI()
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,13 +30,18 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 # ── 请求模型 ────────────────────────────────────────────
 class ChatRequest(BaseModel):
     messages: list[dict[str, str]]
+    model: str = ""
 
 
 # ── 路由 ────────────────────────────────────────────────
 @app.post("/api/agent/chat")
 async def agent_chat(req: ChatRequest):
+    target_agent = agent
+    if req.model:
+        cfg = AgentConfig(model=req.model)
+        target_agent = ResumeAgent(config=cfg)
     return StreamingResponse(
-        agent.chat_stream(req.messages),
+        target_agent.chat_stream(req.messages),
         media_type="text/event-stream",
     )
 
