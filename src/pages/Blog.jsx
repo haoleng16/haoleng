@@ -1,6 +1,8 @@
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { getLocalPostCategories } from '../services/localPosts'
+import PortfolioChrome from '../components/PortfolioChrome'
 
 const BLOG_CATEGORIES = getLocalPostCategories()
 
@@ -96,7 +98,8 @@ function Blog() {
   }
 
   return (
-    <div className="blog-layout">
+    <div className="portfolio-page blog-layout">
+      <PortfolioChrome />
       <div className="blog-content-wrapper">
         {/* Left sidebar — post list */}
         <aside className="blog-sidebar">
@@ -157,6 +160,7 @@ function Blog() {
               {/* Article */}
               <article className="blog-article" ref={articleRef}>
                 <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                   components={{
                     h1: ({ children }) => {
                       const text = String(children)

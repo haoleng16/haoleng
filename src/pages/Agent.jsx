@@ -20,6 +20,23 @@ function createConversation(title) {
   return { id: Date.now(), title, messages: [], time: new Date().toLocaleString('zh-CN') }
 }
 
+function arrayBufferToBase64(buffer) {
+  let binary = ''
+  const bytes = new Uint8Array(buffer)
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
+
+function buildUploadMessage(text, files) {
+  const lines = []
+  if (text) lines.push(text)
+  if (files.length) lines.push(`已上传简历PDF：${files.map(f => f.name).join('、')}`)
+  return lines.join('\n') || '已上传简历PDF，请按评分标准分析。'
+}
+
 function Agent() {
   const [conversations, setConversations] = useState([createConversation('新对话')])
   const [activeId, setActiveId] = useState(conversations[0].id)
@@ -54,22 +71,19 @@ function Agent() {
     setConversations(prev => prev.map(c => (c.id === id ? updater(c) : c)))
   }
 
-  const readFilesAsText = useCallback(async (fileList) => {
-    const readable = fileList.filter(f => {
-      const ext = f.name.split('.').pop().toLowerCase()
-      return ['txt', 'pdf'].includes(ext)
-    })
-    const results = await Promise.all(
-      readable.map(f => f.text().then(t => `[${f.name}]\n${t}`))
-    )
-    return results.join('\n\n')
+  const encodeFiles = useCallback(async (fileList) => {
+    return Promise.all(fileList.map(async file => ({
+      name: file.name,
+      type: file.type || 'application/pdf',
+      contentBase64: arrayBufferToBase64(await file.arrayBuffer()),
+    })))
   }, [])
 
-  const callBackend = useCallback(async (messages, selectedModel) => {
+  const callBackend = useCallback(async (messages, selectedModel, uploadedFiles) => {
     const res = await fetch(BACKEND_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, model: MODELS[selectedModel] }),
+      body: JSON.stringify({ messages, model: MODELS[selectedModel], files: uploadedFiles }),
     })
 
     if (!res.ok) {
@@ -85,13 +99,9 @@ function Agent() {
     if (!text && files.length === 0) return
     if (loading) return
 
-    const fileText = await readFilesAsText(files)
-    const fileNames = files.map(f => `📎 ${f.name}`).join('  ')
-    let userContent = ''
-    if (text) userContent += text
-    if (fileNames) userContent += (userContent ? '\n' : '') + fileNames
-    if (fileText) userContent += (userContent ? '\n\n' : '') + fileText
-
+    const uploadFiles = [...files]
+    const uploadedFiles = await encodeFiles(uploadFiles)
+    const userContent = buildUploadMessage(text, uploadFiles)
     const convId = activeId
     const currentModel = model
 
@@ -111,7 +121,7 @@ function Agent() {
         .map(m => ({ role: m.role, content: m.content }))
       historyMessages.push({ role: 'user', content: userContent })
 
-      const stream = await callBackend(historyMessages, currentModel)
+      const stream = await callBackend(historyMessages, currentModel, uploadedFiles)
       const reader = stream.getReader()
       const decoder = new TextDecoder()
       let accumulated = ''
@@ -174,7 +184,7 @@ function Agent() {
     const selected = Array.from(e.target.files || [])
     const filtered = selected.filter(f => {
       const ext = f.name.split('.').pop().toLowerCase()
-      return ['pdf', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)
+      return ext === 'pdf'
     })
     setFiles(prev => [...prev, ...filtered])
     e.target.value = ''
@@ -296,7 +306,7 @@ function Agent() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.txt,.png,.jpg,.jpeg,.gif,.webp"
+              accept=".pdf,application/pdf"
               style={{ display: 'none' }}
               onChange={handleFileChange}
             />
@@ -311,7 +321,7 @@ function Agent() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="给 DeepSeek 发送消息…"
+                placeholder="Ask something"
                 rows={1}
               />
             </div>

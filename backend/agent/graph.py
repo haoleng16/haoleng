@@ -15,9 +15,11 @@ class ResumeAgent:
 
     def __init__(self, config: AgentConfig):
         self.config = config
+        model_config = config.deepseek
         self.llm = ChatDeepSeek(
-            model=config.model,
-            api_key=config.api_key,
+            model=model_config.model,
+            api_key=model_config.api_key,
+            base_url=model_config.base_url,
             streaming=True,
         )
         self.graph = self._build_graph()
@@ -28,9 +30,12 @@ class ResumeAgent:
         response = self.llm.invoke([system, *state["messages"]])
         return {"messages": [response]}
 
+
+#整个agent图结构编排
     def _build_graph(self) -> StateGraph:
         """构建 LangGraph 状态图:START → call_model → END"""
         graph = StateGraph(AgentState)
+        #添加节点等待大模型回复
         graph.add_node("call_model", self._call_model)
         graph.add_edge(START, "call_model")
         graph.add_edge("call_model", END)

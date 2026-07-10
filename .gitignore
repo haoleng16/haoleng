@@ -27,3 +27,7 @@ __pycache__/
 *.njsproj
 *.sln
 *.sw?
+
+# Redundant source assets (converted/unused copies kept locally only)
+src/assets/projects/文案训练手册_封面.svg
+src/assets/projects/文案训练手册封面.png

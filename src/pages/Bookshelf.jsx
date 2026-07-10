@@ -1,48 +1,39 @@
+import { useState, Suspense } from 'react'
+import { shelfBooks } from '../data/books'
+import BookShelf3D from '../components/BookShelf3D'
+import BookReader from '../components/BookReader'
+import PortfolioChrome from '../components/PortfolioChrome'
+
 function Bookshelf() {
-  const assetBase = import.meta.env.BASE_URL
-  const pdfPath = `${assetBase}bookshelf/copywriting-training-handbook.pdf`
+  const [activeBook, setActiveBook] = useState(null)
 
   return (
-    <section className="bookshelf-page">
-      <div className="bookshelf-panel">
-        <p className="eyebrow">Bookshelf</p>
-        <h1>书架</h1>
-        <p>
-          这里会收纳 HaoLeng 的阅读记录、学习资料和长期想反复翻看的内容。
-        </p>
-      </div>
-
-      <article className="book-detail-card">
-        <div className="book-detail-info">
-          <div>
-            <p className="eyebrow">PDF Manual</p>
-            <h2>文案训练手册</h2>
-            <p>
-              一份适合放进书架长期阅读的文案训练资料，支持跳转在线阅读，也可以下载 PDF。
+    <div className="bookshelf-3d-page">
+      <PortfolioChrome />
+      {!activeBook ? (
+        <>
+          <header className="bookshelf-head">
+            <p className="bookshelf-eyebrow">Library</p>
+            <h1 className="bookshelf-title">书架</h1>
+            <p className="bookshelf-sub">
+              记录阅读历程。把值得反复翻看的内容留在书架上。
             </p>
-          </div>
+          </header>
 
-          <div className="book-meta">
-            <span>PDF</span>
-            <span>4.3 MB</span>
-            <span>在线阅读</span>
-          </div>
+          <Suspense fallback={<div className="bookshelf-loading">加载中…</div>}>
+            <BookShelf3D books={shelfBooks} onOpenBook={setActiveBook} />
+          </Suspense>
 
-          <div className="book-actions">
-            <a className="primary-pill" href={pdfPath} target="_blank" rel="noreferrer">
-              在线阅读
-            </a>
-            <a className="secondary-pill" href={pdfPath} download>
-              下载 PDF
-            </a>
-          </div>
-        </div>
-
-        <div className="pdf-reader" aria-label="文案训练手册在线预览">
-          <iframe title="文案训练手册 PDF 预览" src={pdfPath}></iframe>
-        </div>
-      </article>
-    </section>
+          <footer className="bookshelf-foot">
+            拖拽滑动 · 悬停查看 · 点击翻开
+          </footer>
+        </>
+      ) : (
+        <Suspense fallback={<div className="bookshelf-loading">加载中…</div>}>
+          <BookReader book={activeBook} onClose={() => setActiveBook(null)} />
+        </Suspense>
+      )}
+    </div>
   )
 }
 
