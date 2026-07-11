@@ -2,7 +2,7 @@ import ReactMarkdown from 'react-markdown'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import logoImg from '../assets/haoleng_logo_vector.svg'
 
-const BACKEND_URL = 'http://127.0.0.1:8080/api/agent/chat'
+const BACKEND_URL = '/api/agent/chat'
 
 const MODELS = {
   fast: 'deepseek-v4-flash',

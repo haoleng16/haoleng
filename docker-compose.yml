@@ -1,0 +1,75 @@
+# ===== docker-compose: frontend (nginx) + backend (FastAPI) =====
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: haoleng-backend
+    restart: unless-stopped
+    # Backend does not publish its port publicly — nginx proxies /api to it
+    # over the internal docker network. Uncomment the next line if you want
+    # direct access for debugging (e.g. http://SERVER_IP:8000/docs).
+    # ports:
+    #   - "8000:8000"
+    environment:
+      # === Required: DeepSeek API key (the agent fails without it) ===
+      # Set DEEPSEEK_API_KEY in a .env file at the project root, or export it
+      # in your shell before running docker compose up.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      # Optional: Qwen / GLM multimodal providers
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      QWEN_MODEL: ${QWEN_MODEL:-}
+      QWEN_BASE_URL: ${QWEN_BASE_URL:-}
+      GLM_API_KEY: ${GLM_API_KEY:-}
+      GLM_MODEL: ${GLM_MODEL:-}
+      GLM_BASE_URL: ${GLM_BASE_URL:-}
+    networks:
+      - webnet
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Build-time var baked into the JS bundle by Vite
+        VITE_GITHUB_TOKEN: ${VITE_GITHUB_TOKEN:-}
+    container_name: haoleng-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # Uncomment after enabling HTTPS in nginx.conf:
+      # - "443:443"
+    volumes:
+      # Shared volume for certbot HTTP-01 challenge files
+      - certbot-www:/var/www/certbot:ro
+      # Mount letsencrypt certs (read-only) once you have them
+      - certbot-certs:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+    networks:
+      - webnet
+
+  # ===== certbot — for HTTPS certificate issuance/renewal =====
+  # Run a one-shot issuance after the frontend is up (see deploy steps).
+  # This service is only used on-demand, not kept running.
+  certbot:
+    image: certbot/certbot
+    container_name: haoleng-certbot
+    profiles: ["certbot"]   # only starts when explicitly invoked
+    volumes:
+      - certbot-www:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+    # Issue a certificate (run once after frontend is up):
+    #   docker compose --profile certbot run --rm certbot certonly \
+    #     -w /var/www/certbot -m YOUR_EMAIL -d haoleng.art -d www.haoleng.art \
+    #     --agree-tos --no-eff-email
+
+volumes:
+  certbot-www:
+  certbot-certs:
+
+networks:
+  webnet:
+    driver: bridge

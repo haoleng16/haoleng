@@ -1,0 +1,39 @@
+# Reduce build context size & avoid leaking secrets into images
+
+# Node / build artifacts
+node_modules
+dist
+dist-ssr
+npm-debug.log*
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+
+# Env files (secrets passed via compose, never baked into image)
+.env
+.env.*
+backend/.env
+backend/.venv
+backend/venv
+
+# Python cache
+**/__pycache__
+*.py[cod]
+
+# Docs / plans (not needed at runtime)
+docs
+
+# Redundant large source assets (already in .gitignore)
+src/assets/projects/文案训练手册_封面.svg
+src/assets/projects/文案训练手册封面.png
