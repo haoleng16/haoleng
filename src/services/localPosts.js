@@ -9,6 +9,7 @@ const icons = {
   'React 学习笔记': '⚛️',
   '前端技巧': '🎨',
   'Python第三方库': '🐍',
+  'Python基础': '🌱',
 }
 
 function parsePostMetadata(content, filename) {
