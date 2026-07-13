@@ -372,6 +372,8 @@ function ProjectShowcase() {
           textColor="#ffffff"
           borderRadius={0.05}
           scrollEase={0.05}
+          autoScroll={true}
+          autoSpeed={0.5}
         />
       </div>
     </section>

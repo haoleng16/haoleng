@@ -404,6 +404,8 @@ class App {
       font = 'bold 30px Figtree',
       scrollSpeed = 2,
       scrollEase = 0.05,
+      autoScroll = false,
+      autoSpeed = 0.6,
     } = {}
   ) {
     document.documentElement.classList.remove('no-js');
@@ -411,6 +413,9 @@ class App {
     this.scrollSpeed = scrollSpeed;
     this.scroll = { ease: scrollEase, current: 0, target: 0, last: 0 };
     this.lastRenderTime = 0;
+    this.autoScroll = autoScroll;
+    this.autoSpeed = autoSpeed;
+    this.isHovered = false; // pause auto-scroll while the pointer is over the gallery
     this.boundUpdate = this.update.bind(this);
     this.onCheckDebounce = debounce(this.onCheck, 200);
     this.createRenderer();
@@ -556,6 +561,12 @@ class App {
     }
     this.lastRenderTime = timestamp;
 
+    // Auto-scroll: nudge the target leftward each frame, unless the user is
+    // interacting (hovering/dragging).
+    if (this.autoScroll && !this.isDown && !this.isHovered) {
+      this.scroll.target += this.autoSpeed;
+    }
+
     this.scroll.current = lerp(
       this.scroll.current,
       this.scroll.target,
@@ -585,10 +596,19 @@ class App {
     this.container?.addEventListener('mousemove', this.boundOnTouchMove);
     this.container?.addEventListener('mouseup', this.boundOnTouchUp);
     this.container?.addEventListener('mouseleave', this.boundOnTouchUp);
+    this.container?.addEventListener('mouseenter', this.onPointerEnter.bind(this));
+    this.container?.addEventListener('mouseover', this.onPointerEnter.bind(this));
+    this.container?.addEventListener('mouseout', this.onPointerLeave.bind(this));
     this.container?.addEventListener('touchstart', this.boundOnTouchDown, { passive: true });
     this.container?.addEventListener('touchmove', this.boundOnTouchMove, { passive: true });
     this.container?.addEventListener('touchend', this.boundOnTouchUp);
     this.container?.addEventListener('keydown', this.boundOnKeyDown);
+  }
+  onPointerEnter() {
+    this.isHovered = true;
+  }
+  onPointerLeave() {
+    this.isHovered = false;
   }
   destroy() {
     window.cancelAnimationFrame(this.raf);
@@ -620,6 +640,8 @@ export default function CircularGallery({
   fontUrl,
   scrollSpeed = 2,
   scrollEase = 0.05,
+  autoScroll = false,
+  autoSpeed = 0.6,
 }) {
   const containerRef = useRef(null);
   const [isActive, setIsActive] = useState(false);
@@ -650,6 +672,8 @@ export default function CircularGallery({
         font: resolvedFont,
         scrollSpeed,
         scrollEase,
+        autoScroll,
+        autoSpeed,
       });
     });
 
@@ -657,7 +681,7 @@ export default function CircularGallery({
       isMounted = false;
       if (app) app.destroy();
     };
-  }, [isActive, items, bend, textColor, borderRadius, font, fontUrl, scrollSpeed, scrollEase]);
+  }, [isActive, items, bend, textColor, borderRadius, font, fontUrl, scrollSpeed, scrollEase, autoScroll, autoSpeed]);
   return (
     <div
       className="circular-gallery"
