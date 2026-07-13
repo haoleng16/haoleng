@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>helin</title>
+    <!--
+      GitHub Pages SPA fallback (project page, repo name: haoleng).
+      A refreshed deep link like /haoleng/blog hits GitHub's 404, which serves
+      this file. We encode the requested path into the query string of the repo
+      root and send the browser there. index.html then decodes it and feeds the
+      path back to React Router.
+      Adapted from https://github.com/rafgraph/spa-github-pages
+    -->
+    <script type="text/javascript">
+      var l = window.location;
+      // repo root, e.g. https://haoleng16.github.io/haoleng/
+      var base = l.protocol + '//' + l.host + l.pathname.replace(/\/404\.html$/, '/');
+      // remaining path after the repo segment
+      var rest = l.pathname.split('/').slice(2).join('/').replace(/&/g, '~and~');
+      var query = l.search ? l.search.slice(1).replace(/&/g, '~and~') : '';
+      var redirect = base + '?/' + rest + (query ? '&' + query : '') + l.hash;
+      l.replace(redirect);
+    </script>
+  </head>
+  <body></body>
+</html>
