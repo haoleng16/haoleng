@@ -36,12 +36,15 @@ function extractHeadings(content) {
 function Blog() {
   const blogCategories = BLOG_CATEGORIES
   const allPosts = ALL_POSTS
-  const [selectedPost, setSelectedPost] = useState(() => allPosts[0]?.post ?? null)
-  const [selectedCategory, setSelectedCategory] = useState(() => allPosts[0]?.category ?? null)
+  // Default to the FastAPI article (Python第三方库/FastAPI)
+  const defaultEntry =
+    allPosts.find(item => item.post.id === 'Python第三方库/FastAPI') || allPosts[0]
+  const [selectedPost, setSelectedPost] = useState(() => defaultEntry?.post ?? null)
+  const [selectedCategory, setSelectedCategory] = useState(() => defaultEntry?.category ?? null)
   const contentRef = useRef(null)
   const articleRef = useRef(null)
   const [activeHeading, setActiveHeading] = useState('')
-  const [expandedCat, setExpandedCat] = useState(() => allPosts[0]?.category.name ?? null)
+  const [expandedCat, setExpandedCat] = useState(() => defaultEntry?.category.name ?? null)
 
   const headings = useMemo(
     () => (selectedPost ? extractHeadings(selectedPost.content) : []),
@@ -101,48 +104,73 @@ function Blog() {
     <div className="portfolio-page blog-layout">
       <PortfolioChrome />
       <div className="blog-content-wrapper">
-        {/* Left sidebar — post list */}
+        {/* Left sidebar — folder cards + expandable article list */}
         <aside className="blog-sidebar">
-          <div className="blog-sidebar-header">博文列表</div>
-          {blogCategories.map(category => (
-            <div key={category.name} className="blog-sidebar-group">
-              <button
-                className="blog-sidebar-group-title blog-sidebar-expandable"
-                onClick={() => setExpandedCat(expandedCat === category.name ? null : category.name)}
-              >
-                <span>{category.name}</span>
-                <span className={`blog-sidebar-arrow ${expandedCat === category.name ? 'open' : ''}`}>▸</span>
-              </button>
-              {expandedCat === category.name && (
-                category.subcategories?.length > 0 ? (
-                  category.subcategories.map(sub => (
-                    <div key={sub.name} className="blog-sidebar-subgroup">
-                      <div className="blog-sidebar-subgroup-title">{sub.name}</div>
-                      {sub.posts.map(post => (
-                        <button
-                          key={post.id}
-                          className={`blog-sidebar-item ${selectedPost?.id === post.id ? 'active' : ''}`}
-                          onClick={() => selectPost(post, category, sub)}
-                        >
-                          {post.title}
-                        </button>
-                      ))}
+          <div className="blog-sidebar-header">博文分类</div>
+          <div className="blog-folder-grid">
+            {blogCategories.map(category => {
+              const count = (category.subcategories?.length > 0
+                ? category.subcategories.reduce((n, s) => n + s.posts.length, 0)
+                : category.posts.length)
+              const isActive = selectedCategory?.name === category.name
+              return (
+                <div key={category.name} className="blog-folder-card-wrap">
+                  <button
+                    className={`blog-folder-card ${isActive ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedCategory(category)
+                      setExpandedCat(expandedCat === category.name ? null : category.name)
+                      // select first post of the category
+                      const first = category.subcategories?.length > 0
+                        ? category.subcategories[0].posts[0]
+                        : category.posts[0]
+                      if (first) {
+                        setSelectedPost(first)
+                        contentRef.current?.scrollTo({ top: 0 })
+                      }
+                    }}
+                  >
+                    <span className="blog-folder-icon">{category.icon || '📁'}</span>
+                    <span className="blog-folder-name">{category.name}</span>
+                    <span className="blog-folder-count">{count} 篇</span>
+                    <span className={`blog-folder-arrow ${expandedCat === category.name ? 'open' : ''}`}>▸</span>
+                  </button>
+
+                  {/* Article list — shown when this folder is expanded */}
+                  {expandedCat === category.name && (
+                    <div className="blog-folder-articles">
+                      {category.subcategories?.length > 0 ? (
+                        category.subcategories.map(sub => (
+                          <div key={sub.name} className="blog-sidebar-subgroup">
+                            <div className="blog-sidebar-subgroup-title">{sub.name}</div>
+                            {sub.posts.map(post => (
+                              <button
+                                key={post.id}
+                                className={`blog-sidebar-item ${selectedPost?.id === post.id ? 'active' : ''}`}
+                                onClick={() => selectPost(post, category, sub)}
+                              >
+                                {post.title}
+                              </button>
+                            ))}
+                          </div>
+                        ))
+                      ) : (
+                        category.posts.map(post => (
+                          <button
+                            key={post.id}
+                            className={`blog-sidebar-item ${selectedPost?.id === post.id ? 'active' : ''}`}
+                            onClick={() => selectPost(post, category)}
+                          >
+                            {post.title}
+                          </button>
+                        ))
+                      )}
                     </div>
-                  ))
-                ) : (
-                  category.posts.map(post => (
-                    <button
-                      key={post.id}
-                      className={`blog-sidebar-item ${selectedPost?.id === post.id ? 'active' : ''}`}
-                      onClick={() => selectPost(post, category)}
-                    >
-                      {post.title}
-                    </button>
-                  ))
-                )
-              )}
-            </div>
-          ))}
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </aside>
 
         {/* Main content */}
