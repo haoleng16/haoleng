@@ -80,11 +80,17 @@ function Agent() {
   }, [])
 
   const callBackend = useCallback(async (messages, selectedModel, uploadedFiles) => {
-    const res = await fetch(BACKEND_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, model: MODELS[selectedModel], files: uploadedFiles }),
-    })
+    let res
+    try {
+      res = await fetch(BACKEND_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, model: MODELS[selectedModel], files: uploadedFiles }),
+      })
+    } catch (e) {
+      // Network error — backend not reachable (e.g. static hosting like GitHub Pages)
+      throw new Error('后端服务不可用。当前为静态展示环境，Agent 功能需要在完整部署下使用。')
+    }
 
     if (!res.ok) {
       const err = await res.text()

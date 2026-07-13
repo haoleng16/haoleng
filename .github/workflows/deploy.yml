@@ -1,9 +1,15 @@
+# ===== Deploy the Vite app to GitHub Pages =====
+# After pushing, GitHub Actions builds the site and publishes it to
+# https://haoleng16.github.io/haoleng/
+#
+# One-time setup (repo Settings → Pages):
+#   Build and deployment → Source = "GitHub Actions"
+
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -13,7 +19,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -25,22 +31,24 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci || npm install
 
-      - name: Build
+      - name: Build (Vite)
         run: npm run build
+        env:
+          VITE_GITHUB_TOKEN: ${{ secrets.VITE_GITHUB_TOKEN }}
 
-      - name: Add SPA fallback
-        run: cp dist/index.html dist/404.html
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Upload Pages artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: ./dist
 
   deploy:
     needs: build
