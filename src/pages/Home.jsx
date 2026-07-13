@@ -345,6 +345,7 @@ function ProjectShowcase() {
   const galleryItems = projects.map((p) => ({
     image: p.image,
     text: p.name,
+    href: p.href,
   }))
 
   return (
@@ -373,25 +374,8 @@ function ProjectShowcase() {
           borderRadius={0.05}
           scrollEase={0.05}
           autoScroll={true}
-          autoSpeed={0.5}
+          autoSpeed={0.18}
         />
-      </div>
-
-      {/* Clickable project links — the 3D gallery is a canvas (no real <a>
-          elements), so real navigation lives here. */}
-      <div className="px-6 sm:px-10 lg:px-16 mt-10 flex flex-wrap gap-3">
-        {projects.map((p) => (
-          <a
-            key={p.name}
-            href={p.href}
-            target="_blank"
-            rel="noreferrer"
-            className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-transparent px-5 py-2.5 font-inter text-xs uppercase tracking-widest text-white/70 transition-all duration-200 hover:border-white/40 hover:text-white"
-          >
-            {p.name}
-            <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </a>
-        ))}
       </div>
     </section>
   )

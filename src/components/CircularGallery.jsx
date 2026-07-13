@@ -26,6 +26,7 @@ function autoBind(instance) {
 
 const DEFAULT_FONT = 'bold 30px Figtree';
 const FRAME_INTERVAL = 1000 / 30;
+const DRAG_THRESHOLD = 8;
 const DEFAULT_FONT_URL =
   'https://fonts.googleapis.com/css2?family=Figtree:wght@400;700&display=swap';
 
@@ -200,6 +201,7 @@ class Media {
     geometry,
     gl,
     image,
+    href,
     index,
     length,
     renderer,
@@ -216,6 +218,7 @@ class Media {
     this.geometry = geometry;
     this.gl = gl;
     this.image = image;
+    this.href = href;
     this.index = index;
     this.length = length;
     this.renderer = renderer;
@@ -473,6 +476,7 @@ class App {
         geometry: this.planeGeometry,
         gl: this.gl,
         image: data.image,
+        href: data.href,
         index,
         length: this.mediasImages.length,
         renderer: this.renderer,
@@ -489,18 +493,66 @@ class App {
   }
   onTouchDown(e) {
     this.isDown = true;
+    this.hasDragged = false;
     this.scroll.position = this.scroll.current;
-    this.start = e.touches ? e.touches[0].clientX : e.clientX;
+    const point = e.touches ? e.touches[0] : e;
+    this.startX = point.clientX;
+    this.startY = point.clientY;
   }
   onTouchMove(e) {
     if (!this.isDown) return;
-    const x = e.touches ? e.touches[0].clientX : e.clientX;
-    const distance = (this.start - x) * (this.scrollSpeed * 0.025);
+    const point = e.touches ? e.touches[0] : e;
+    const x = point.clientX;
+    const y = point.clientY;
+    if (Math.hypot(x - this.startX, y - this.startY) > DRAG_THRESHOLD) {
+      this.hasDragged = true;
+    }
+    const distance = (this.startX - x) * (this.scrollSpeed * 0.025);
     this.scroll.target = this.scroll.position + distance;
   }
-  onTouchUp() {
+  onTouchUp(e) {
+    const point = e.changedTouches ? e.changedTouches[0] : e;
+    if (!this.hasDragged && point) {
+      this.openMedia(this.findMediaAt(point.clientX, point.clientY));
+    }
     this.isDown = false;
     this.onCheck();
+  }
+  findMediaAt(clientX, clientY) {
+    if (!this.medias || !Number.isFinite(clientX) || !Number.isFinite(clientY)) {
+      return null;
+    }
+    const rect = this.container.getBoundingClientRect();
+    const worldX = ((clientX - rect.left) / rect.width - 0.5) * this.viewport.width;
+    const worldY = (0.5 - (clientY - rect.top) / rect.height) * this.viewport.height;
+    let match = null;
+    let closest = Infinity;
+
+    this.medias.forEach((media) => {
+      if (!media.href) return;
+      const angle = media.plane.rotation.z;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const dx = worldX - media.plane.position.x;
+      const dy = worldY - media.plane.position.y;
+      const localX = dx * cos + dy * sin;
+      const localY = -dx * sin + dy * cos;
+      const halfWidth = media.plane.scale.x / 2;
+      const halfHeight = media.plane.scale.y / 2;
+
+      if (Math.abs(localX) <= halfWidth && Math.abs(localY) <= halfHeight) {
+        const distance = Math.hypot(localX / halfWidth, localY / halfHeight);
+        if (distance < closest) {
+          closest = distance;
+          match = media;
+        }
+      }
+    });
+    return match;
+  }
+  openMedia(media) {
+    if (!media?.href) return;
+    window.open(media.href, '_blank', 'noopener,noreferrer');
   }
   onWheel(e) {
     const delta = e.deltaY || e.wheelDelta || e.detail;
@@ -524,6 +576,17 @@ class App {
         this.scroll.target = 0;
         this.onCheckDebounce();
         break;
+      case 'Enter': {
+        const centeredMedia = this.medias?.reduce((closest, media) => {
+          if (!media.href) return closest;
+          if (!closest) return media;
+          return Math.abs(media.plane.position.x) < Math.abs(closest.plane.position.x)
+            ? media
+            : closest;
+        }, null);
+        this.openMedia(centeredMedia);
+        break;
+      }
       default:
         break;
     }
@@ -588,6 +651,8 @@ class App {
     this.boundOnTouchMove = this.onTouchMove.bind(this);
     this.boundOnTouchUp = this.onTouchUp.bind(this);
     this.boundOnKeyDown = this.onKeyDown.bind(this);
+    this.boundOnPointerEnter = this.onPointerEnter.bind(this);
+    this.boundOnPointerLeave = this.onPointerLeave.bind(this);
 
     window.addEventListener('resize', this.boundOnResize);
     this.container?.addEventListener('mousewheel', this.boundOnWheel, { passive: true });
@@ -596,9 +661,8 @@ class App {
     this.container?.addEventListener('mousemove', this.boundOnTouchMove);
     this.container?.addEventListener('mouseup', this.boundOnTouchUp);
     this.container?.addEventListener('mouseleave', this.boundOnTouchUp);
-    this.container?.addEventListener('mouseenter', this.onPointerEnter.bind(this));
-    this.container?.addEventListener('mouseover', this.onPointerEnter.bind(this));
-    this.container?.addEventListener('mouseout', this.onPointerLeave.bind(this));
+    this.container?.addEventListener('pointerenter', this.boundOnPointerEnter);
+    this.container?.addEventListener('pointerleave', this.boundOnPointerLeave);
     this.container?.addEventListener('touchstart', this.boundOnTouchDown, { passive: true });
     this.container?.addEventListener('touchmove', this.boundOnTouchMove, { passive: true });
     this.container?.addEventListener('touchend', this.boundOnTouchUp);
@@ -623,6 +687,8 @@ class App {
       this.container.removeEventListener('mousemove', this.boundOnTouchMove);
       this.container.removeEventListener('mouseup', this.boundOnTouchUp);
       this.container.removeEventListener('mouseleave', this.boundOnTouchUp);
+      this.container.removeEventListener('pointerenter', this.boundOnPointerEnter);
+      this.container.removeEventListener('pointerleave', this.boundOnPointerLeave);
       this.container.removeEventListener('touchstart', this.boundOnTouchDown);
       this.container.removeEventListener('touchmove', this.boundOnTouchMove);
       this.container.removeEventListener('touchend', this.boundOnTouchUp);
@@ -688,7 +754,7 @@ export default function CircularGallery({
       ref={containerRef}
       tabIndex={0}
       role="region"
-      aria-label="Circular image gallery. Use left and right arrow keys to navigate."
+      aria-label="Project gallery. Click a card to open GitHub, or use arrow keys and Enter."
     />
   );
 }
