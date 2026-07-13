@@ -8,8 +8,10 @@
     <title>helin</title>
   </head>
   <body>
-    <!-- GitHub Pages SPA redirect receiver: 404.html encodes the requested path
-         into ?/<path>. Here we restore it into the real URL before React mounts. -->
+    <!-- GitHub Pages SPA redirect receiver. 404.html encodes the originally
+         requested path into the query as ?/<path>&<query>. Here we decode it
+         back into a real URL (with the repo segment prepended) before React
+         mounts, so React Router sees the correct route. This runs once. -->
     <script type="text/javascript">
       (function (l) {
         if (l.search[1] === '/') {
@@ -20,13 +22,13 @@
               return s.replace(/~and~/g, '&');
             })
             .join('?');
-          // decoded is "blog?query..." (path AFTER the repo segment). Re-add the
-          // repo prefix (e.g. /haoleng/) so React Router sees the full route.
-          var repoSegment = l.pathname.replace(/\/$/, ''); // "/haoleng"
+          // decoded looks like "/blog?key=val..." — prepend the repo path so the
+          // final URL is e.g. /haoleng/blog?key=val (strip trailing slash first
+          // to avoid a double slash).
           window.history.replaceState(
             null,
             null,
-            repoSegment + '/' + decoded + l.hash
+            l.pathname.replace(/\/$/, '') + decoded + l.hash
           );
         }
       })(window.location);

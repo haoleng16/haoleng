@@ -4,22 +4,34 @@
     <meta charset="utf-8" />
     <title>helin</title>
     <!--
-      GitHub Pages SPA fallback (project page, repo name: haoleng).
-      A refreshed deep link like /haoleng/blog hits GitHub's 404, which serves
-      this file. We encode the requested path into the query string of the repo
-      root and send the browser there. index.html then decodes it and feeds the
-      path back to React Router.
-      Adapted from https://github.com/rafgraph/spa-github-pages
+      GitHub Pages SPA fallback (single-page-app redirect for project pages).
+      Adapted from https://github.com/rafgraph/spa-github-pages (MIT).
+      When a deep link is refreshed, GitHub serves this 404.html. We redirect to
+      the repo root index.html with the original path/query/hash encoded after ?/
+      in the search string. index.html decodes it back into a real URL before the
+      app boots. Only redirects once: the redirect target has no "404" path, so
+      index.html loads instead of this file again.
     -->
     <script type="text/javascript">
-      var l = window.location;
-      // repo root, e.g. https://haoleng16.github.io/haoleng/
-      var base = l.protocol + '//' + l.host + l.pathname.replace(/\/404\.html$/, '/');
-      // remaining path after the repo segment
-      var rest = l.pathname.split('/').slice(2).join('/').replace(/&/g, '~and~');
-      var query = l.search ? l.search.slice(1).replace(/&/g, '~and~') : '';
-      var redirect = base + '?/' + rest + (query ? '&' + query : '') + l.hash;
-      l.replace(redirect);
+      (function (l) {
+        // project page: <user>.github.io/<repo>/<route...>
+        // segmentCount = 1 means one path segment is the repo name ("haoleng").
+        var segmentCount = 1;
+        var redirect =
+          l.protocol +
+          '//' +
+          l.hostname +
+          (l.port ? ':' + l.port : '') +
+          l.pathname
+            .split('/')
+            .slice(0, 1 + segmentCount)
+            .join('/') +
+          '/?/' +
+          l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash;
+        l.replace(redirect);
+      })(window.location);
     </script>
   </head>
   <body></body>
